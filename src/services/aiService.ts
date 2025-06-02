@@ -1,4 +1,5 @@
 import axios from 'axios';
+import {GEMINI_API_KEY, OPENAI_API_KEY, API_TIMEOUT} from '@env';
 
 interface AIResponse {
   fortune: string;
@@ -7,12 +8,20 @@ interface AIResponse {
 }
 
 class AIFortuneService {
-  private readonly timeout = 10000; // 10 seconds timeout
+  // Use environment variable for timeout with fallback
+  private readonly timeout = parseInt(API_TIMEOUT) || 10000; // 10 seconds timeout
 
-  // OpenAI API (requires API key)
+  // OpenAI API integration
   async getFortuneFromOpenAI(apiKey?: string): Promise<AIResponse> {
-    if (!apiKey) {
-      return {fortune: '', success: false, error: 'OpenAI API key required'};
+    // Use provided key or environment variable
+    const key = apiKey || OPENAI_API_KEY;
+
+    if (!key) {
+      return {
+        fortune: '',
+        success: false,
+        error: 'OpenAI API key not provided',
+      };
     }
 
     try {
@@ -24,7 +33,7 @@ class AIFortuneService {
             {
               role: 'system',
               content:
-                'You are a wise fortune teller. Generate a short, positive, inspirational fortune message in Turkish. Keep it under 80 characters. Be motivational and uplifting.',
+                'You are a wise fortune teller. Give short, positive, and inspiring Turkish fortune messages. Maximum 10 words.',
             },
             {
               role: 'user',
@@ -36,7 +45,7 @@ class AIFortuneService {
         },
         {
           headers: {
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer ${key}`,
             'Content-Type': 'application/json',
           },
           timeout: this.timeout,
@@ -155,9 +164,17 @@ class AIFortuneService {
 
   // Google Gemini AI (Free alternative)
   async getFortuneFromGemini(): Promise<AIResponse> {
+    if (!GEMINI_API_KEY) {
+      return {
+        fortune: '',
+        success: false,
+        error: 'Gemini API key not found in environment variables',
+      };
+    }
+
     try {
       const response = await axios.post(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyB01Og32nSPy0BtThdbNl6qwgJU2hkQHkE', // Replace with your Gemini API key
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           contents: [
             {
